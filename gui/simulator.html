@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M2 Plus — Firmware Behaviour Simulator & Hardware Emulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0d14;
+      --bg-card: rgba(18, 24, 38, 0.75);
+      --bg-card-hover: rgba(26, 34, 52, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(0, 240, 255, 0.3);
+      --primary: #00f0ff;
+      --primary-glow: rgba(0, 240, 255, 0.4);
+      --lime: #39ff14;
+      --lime-glow: rgba(57, 255, 20, 0.4);
+      --purple: #b026ff;
+      --purple-glow: rgba(176, 38, 255, 0.4);
+      --orange: #ff9100;
+      --red: #ff3344;
+      --yellow: #ffd000;
+      --cyan: #00f0ff;
+      --text-main: #e2e8f0;
+      --text-muted: #8492a6;
+      --glass-blur: blur(16px);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 10%, #151d30 0%, var(--bg-dark) 80%);
+      color: var(--text-main);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    header {
+      padding: 1.25rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(10, 13, 20, 0.8);
+      backdrop-filter: var(--glass-blur);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, #00f0ff, #7000ff);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+    }
+
+    .brand h1 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .nav-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .nav-btn:hover {
+      background: rgba(0, 240, 255, 0.12);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 460px 1fr 380px;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      flex: 1;
+      max-width: 1920px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (max-width: 1400px) {
+      .main-grid {
+        grid-template-columns: 440px 1fr;
+      }
+      .right-col {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 992px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+      .right-col {
+        grid-column: span 1;
+      }
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 0.75rem;
+    }
+
+    .card-title .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      background: rgba(0, 240, 255, 0.1);
+      color: var(--primary);
+      border: 1px solid var(--border-accent);
+    }
+
+    /* Device Enclosure & Physical PCB Simulator */
+    .device-container {
+      background: radial-gradient(circle at 50% 30%, #1e283d, #0f1522);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 2rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.75rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+      position: relative;
+    }
+
+    /* Fan Motor Visualizer */
+    .fan-housing {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: #080b12;
+      border: 4px solid #1a2336;
+      box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 240, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .fan-blades {
+      width: 150px;
+      height: 150px;
+      position: absolute;
+      transform-origin: center center;
+      transition: filter 0.3s ease;
+    }
+
+    .blade {
+      position: absolute;
+      width: 24px;
+      height: 65px;
+      background: linear-gradient(to top, #26334d, #4a5c80);
+      border-radius: 50% 50% 20% 20%;
+      top: 10px;
+      left: 63px;
+      transform-origin: 12px 65px;
+      box-shadow: inset 0 0 6px rgba(0, 240, 255, 0.2);
+    }
+
+    .blade:nth-child(1) { transform: rotate(0deg); }
+    .blade:nth-child(2) { transform: rotate(51.4deg); }
+    .blade:nth-child(3) { transform: rotate(102.8deg); }
+    .blade:nth-child(4) { transform: rotate(154.2deg); }
+    .blade:nth-child(5) { transform: rotate(205.6deg); }
+    .blade:nth-child(6) { transform: rotate(257deg); }
+    .blade:nth-child(7) { transform: rotate(308.4deg); }
+
+    .fan-hub {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #3d4f70, #131a29);
+      border: 2px solid #2a3750;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-shadow: 0 0 5px var(--primary);
+    }
+
+    /* 4x WS2812B LEDs */
+    .led-strip-enclosure {
+      background: #080c14;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      gap: 1.5rem;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
+      position: relative;
+    }
+
+    .led-slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .ws2812-led {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #111622;
+      border: 2px solid #263348;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+      transition: background 0.05s ease, box-shadow 0.05s ease;
+      position: relative;
+    }
+
+    .ws2812-led::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 6px;
+      width: 6px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.4);
+      filter: blur(0.5px);
+    }
+
+    .led-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    /* Physical Tactile Button (PD5) */
+    .button-assembly {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      width: 100%;
+    }
+
+    .push-button {
+      width: 74px;
+      height: 74px;
+      border-radius: 50%;
+      border: 4px solid #1a2233;
+      background: radial-gradient(circle at 40% 35%, #2d3b55, #141b29);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6), inset 0 2px 2px rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.1s ease;
+      position: relative;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .push-button:hover {
+      border-color: rgba(0, 240, 255, 0.4);
+      box-shadow: 0 8px 22px rgba(0, 240, 255, 0.2), inset 0 2px 2px rgba(255, 255, 255, 0.3);
+    }
+
+    .push-button.active, .push-button:active {
+      transform: translateY(3px) scale(0.96);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8), inset 0 4px 8px rgba(0, 0, 0, 0.6);
+      background: radial-gradient(circle at 50% 50%, #151c29, #0d121c);
+    }
+
+    .push-button svg {
+      width: 28px;
+      height: 28px;
+      fill: none;
+      stroke: var(--text-main);
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .press-ring {
+      position: absolute;
+      top: -6px;
+      left: -6px;
+      width: 86px;
+      height: 86px;
+      pointer-events: none;
+      transform: rotate(-90deg);
+    }
+
+    .press-ring circle {
+      fill: none;
+      stroke: var(--primary);
+      stroke-width: 3;
+      stroke-dasharray: 270;
+      stroke-dashoffset: 270;
+      transition: stroke-dashoffset 0.05s linear;
+    }
+
+    .btn-hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 0.8rem;
+    }
+
+    .btn-hint span {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* USB Charging Port Visual */
+    .usb-cable-dock {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 0.6rem 1rem;
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .port-label {
+      font-size: 0.82rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .port-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #555;
+    }
+
+    .port-status-dot.connected {
+      background: var(--lime);
+      box-shadow: 0 0 8px var(--lime);
+    }
+
+    .cable-btn {
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      transition: all 0.2s ease;
+    }
+
+    .cable-btn.plugged {
+      background: rgba(255, 51, 68, 0.2);
+      border-color: var(--red);
+      color: #ff8899;
+    }
+
+    .cable-btn:hover {
+      filter: brightness(1.2);
+    }
+
+    /* Sliders and Control Inputs */
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .ctrl-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .ctrl-label-row .val {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--primary);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #1c2538;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 10px var(--primary);
+      cursor: pointer;
+    }
+
+    /* Live State & Timing Readout */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.8rem;
+    }
+
+    .metric-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .metric-box .label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-box .value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* State Pills */
+    .state-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      width: fit-content;
+    }
+
+    .state-pill.off {
+      background: rgba(100, 116, 139, 0.2);
+      color: #94a3b8;
+      border: 1px solid rgba(100, 116, 139, 0.4);
+    }
+
+    .state-pill.running {
+      background: rgba(0, 240, 255, 0.15);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+      box-shadow: 0 0 12px var(--primary-glow);
+    }
+
+    .state-pill.boot {
+      background: rgba(255, 208, 0, 0.15);
+      color: var(--yellow);
+      border: 1px solid var(--yellow);
+    }
+
+    .state-pill.sleep {
+      background: rgba(176, 38, 255, 0.15);
+      color: #d896ff;
+      border: 1px solid var(--purple);
+    }
+
+    /* Scenario Automation Buttons */
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+
+    .scenario-btn {
+      padding: 0.65rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-main);
+      text-align: left;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+    }
+
+    .scenario-btn:hover {
+      background: rgba(0, 240, 255, 0.08);
+      border-color: var(--primary);
+      transform: translateX(3px);
+    }
+
+    .scenario-btn span.tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+    }
+
+    /* Terminal Serial Monitor */
+    .terminal-container {
+      background: #06090e;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      padding: 0.85rem;
+      height: 240px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      line-height: 1.4;
+    }
+
+    .log-line {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .log-time {
+      color: #4a5c78;
+      user-select: none;
+    }
+
+    .log-tag {
+      font-weight: 600;
+    }
+
+    .log-tag.FW { color: var(--primary); }
+    .log-tag.HW { color: var(--yellow); }
+    .log-tag.ADC { color: var(--lime); }
+    .log-tag.LED { color: #ff88ff; }
+    .log-tag.ERR { color: var(--red); }
+
+    .log-msg {
+      color: #cbd5e1;
+    }
+
+    /* EEPROM Inspection Table */
+    .reg-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+    }
+
+    .reg-table th {
+      text-align: left;
+      padding: 0.4rem 0.6rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-weight: 500;
+    }
+
+    .reg-table td {
+      padding: 0.4rem 0.6rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .reg-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .reg-match {
+      color: var(--lime);
+    }
+
+    .reg-mismatch {
+      color: var(--red);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-badge">EMULATOR v2.2</div>
+      <h1>M2 Handheld Fan — Firmware & Hardware Simulator</h1>
+    </div>
+    <div class="nav-links">
+      <a href="config_editor.html" class="nav-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Open Config Studio
+      </a>
+      <button class="nav-btn" onclick="resetMCU()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+        Power Cycle MCU
+      </button>
+    </div>
+  </header>
+
+  <main class="main-grid">
+
+    <!-- LEFT COLUMN: Physical Board Simulation -->
+    <div class="card">
+      <div class="card-title">
+        <span>Hardware Mockup (Custom PCB)</span>
+        <span class="badge">CH32V003 + AMT49406</span>
+      </div>
+
+      <div class="device-container">
+        <!-- BLDC Fan Motor -->
+        <div class="fan-housing">
+          <div class="fan-blades" id="fan-blades">
+            <div class="blade"></div>
+            <div class="blade"></div>
+            <div class="blade"></div>
+            <div class="blade"></div>
+            <div class="blade"></div>
+            <div class="blade"></div>
+            <div class="blade"></div>
+          </div>
+          <div class="fan-hub" id="fan-hub-text">0%<br>STOP</div>
+        </div>
+
+        <!-- 4x WS2812B RGB LEDs on PD2 -->
+        <div class="led-strip-enclosure">
+          <div class="led-slot">
+            <div class="ws2812-led" id="led-0"></div>
+            <div class="led-label">LED0</div>
+          </div>
+          <div class="led-slot">
+            <div class="ws2812-led" id="led-1"></div>
+            <div class="led-label">LED1</div>
+          </div>
+          <div class="led-slot">
+            <div class="ws2812-led" id="led-2"></div>
+            <div class="led-label">LED2</div>
+          </div>
+          <div class="led-slot">
+            <div class="ws2812-led" id="led-3"></div>
+            <div class="led-label">LED3</div>
+          </div>
+        </div>
+
+        <!-- Physical Power/Speed Tactile Button (PD5) -->
+        <div class="button-assembly">
+          <button class="push-button" id="tactile-btn" 
+                  onmousedown="onButtonDown()" 
+                  onmouseup="onButtonUp()" 
+                  onmouseleave="onButtonUp()" 
+                  ontouchstart="onButtonDown()" 
+                  ontouchend="onButtonUp()">
+            <svg viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/></svg>
+            <svg class="press-ring">
+              <circle cx="43" cy="43" r="38" id="press-circle"></circle>
+            </svg>
+          </button>
+          <div class="btn-hint">
+            <span>Click: Next Speed / Off</span>
+            <span>Hold &gt;1.5s: Turn Off</span>
+          </div>
+        </div>
+
+        <!-- USB Charger Port (IP2312) -->
+        <div class="usb-cable-dock">
+          <div class="port-label">
+            <div class="port-status-dot" id="usb-status-dot"></div>
+            <span id="usb-status-text">USB Unplugged (0V)</span>
+          </div>
+          <button class="cable-btn" id="usb-toggle-btn" onclick="toggleUSBCharger()">Plug Type-C</button>
+        </div>
+      </div>
+
+      <!-- Live Electrical Rails -->
+      <div class="metric-grid">
+        <div class="metric-box">
+          <span class="label">1S Battery (PD6 Direct)</span>
+          <span class="value" id="val-batt-mv">3850 mV</span>
+        </div>
+        <div class="metric-box">
+          <span class="label">MCU Logic / ADC Ref</span>
+          <span class="value" style="color: var(--primary);">5.00 V</span>
+        </div>
+        <div class="metric-box">
+          <span class="label">Charge In (PA1 - IP2312 D1)</span>
+          <span class="value" id="val-pa1-mv">0 mV</span>
+        </div>
+        <div class="metric-box">
+          <span class="label">Full In (PA2 - IP2312 D2)</span>
+          <span class="value" id="val-pa2-mv">0 mV</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MIDDLE COLUMN: Firmware Engine & Interactive Peripherals -->
+    <div class="card">
+      <div class="card-title">
+        <span>Firmware Internal State & Execution Engine</span>
+        <div id="mcu-state-pill" class="state-pill off">STATE_OFF</div>
+      </div>
+
+      <!-- State & Timing Status -->
+      <div class="metric-grid">
+        <div class="metric-box">
+          <span class="label">Speed Level (0-10)</span>
+          <span class="value" id="fw-level-val">Level 0 (0%)</span>
+        </div>
+        <div class="metric-box">
+          <span class="label">Throttle Demand (0-511)</span>
+          <span class="value" id="fw-demand-val">0 (0.0%)</span>
+        </div>
+        <div class="metric-box">
+          <span class="label">Speed Feedback Timer</span>
+          <span class="value" id="fw-timer-val">0 ms</span>
+        </div>
+        <div class="metric-box">
+          <span class="label">Breathing Phase (0.25 Hz)</span>
+          <span class="value" id="fw-breath-val">--</span>
+        </div>
+      </div>
+
+      <!-- Interactive Peripheral Adjustments -->
+      <div class="ctrl-group">
+        <div class="ctrl-label-row">
+          <span>1S Battery Resting Voltage:</span>
+          <span class="val" id="disp-batt-slider">3.85 V</span>
+        </div>
+        <input type="range" id="slider-batt" min="2.90" max="4.25" step="0.01" value="3.85" oninput="onBatterySliderChange(this.value)">
+      </div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-label-row">
+          <span>IP2312 Charge State:</span>
+          <span class="val" id="disp-chg-mode">Charging (D1=2.0V, D2=0V)</span>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="cable-btn" style="flex:1;" onclick="setChargerMode('charging')">Force Charging (2V/0V)</button>
+          <button class="cable-btn" style="flex:1;" onclick="setChargerMode('full')">Force Full (0V/2V)</button>
+        </div>
+      </div>
+
+      <!-- EEPROM Flash / Verification Simulator -->
+      <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: 600; font-size: 0.9rem;">AMT49406 EEPROM Profile</span>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="cable-btn" onclick="corruptEEPROM()">Corrupt / Erase</button>
+            <button class="cable-btn" onclick="matchEEPROM()">Sync to Config 1</button>
+          </div>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">
+          Active Golden Profile: <strong style="color:var(--primary);">Config 1</strong> (Rated Speed 400, <strong style="color:var(--lime);">Rated Current raw = 800</strong>)
+        </div>
+        <div style="font-size: 0.78rem; font-family:'JetBrains Mono', monospace;" id="eeprom-summary-text">
+          EEPROM Status: All 13 registers MATCH golden profile.
+        </div>
+      </div>
+
+      <!-- Terminal / Event Log -->
+      <div style="display: flex; flex-direction: column; gap: 0.4rem; flex: 1;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted);">FIRMWARE EVENT MONITOR</span>
+          <button class="cable-btn" style="font-size: 0.7rem; padding: 0.15rem 0.5rem;" onclick="clearLogs()">Clear</button>
+        </div>
+        <div class="terminal-container" id="terminal-log">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Automated Test Scenarios & Register Table -->
+    <div class="card right-col">
+      <div class="card-title">
+        <span>One-Click Test Scenarios</span>
+        <span class="badge">Verification Suite</span>
+      </div>
+
+      <div class="scenario-grid">
+        <button class="scenario-btn" onclick="runScenario('clean_boot')">
+          <div>
+            <strong>1. Clean Boot (Matching EEPROM)</strong>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Green 1.2s &rarr; All Dark &rarr; Sleep WFI</div>
+          </div>
+          <span class="tag">BOOT</span>
+        </button>
+
+        <button class="scenario-btn" onclick="runScenario('mismatch_boot')">
+          <div>
+            <strong>2. Boot Mismatch & Auto-Flash</strong>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">EEPROM Erase/Write &rarr; Yellow Halt</div>
+          </div>
+          <span class="tag">FLASH</span>
+        </button>
+
+        <button class="scenario-btn" onclick="runScenario('cycle_speed')">
+          <div>
+            <strong>3. Speed Cycle (0 &rarr; 1..10 &rarr; Off)</strong>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Step 11% to 100%, 1.5s Speed Feedback</div>
+          </div>
+          <span class="tag">MOTOR</span>
+        </button>
+
+        <button class="scenario-btn" onclick="runScenario('long_press')">
+          <div>
+            <strong>4. Long Press 1.5s Turn-Off</strong>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Brake pulse &rarr; Immediate Dark &rarr; OFF</div>
+          </div>
+          <span class="tag">BTN</span>
+        </button>
+
+        <button class="scenario-btn" onclick="runScenario('plug_off')">
+          <div>
+            <strong>5. Plug Charger while Fan OFF</strong>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Wakes from sleep, 0.25Hz Breathing</div>
+          </div>
+          <span class="tag">CHG</span>
+        </button>
+
+        <button class="scenario-btn" onclick="runScenario('unplug_off')">
+          <div>
+            <strong>6. Unplug Charger while Fan OFF</strong>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Breathing stops &rarr; Dark &rarr; Sleep WFI</div>
+          </div>
+          <span class="tag">POWER</span>
+        </button>
+
+        <button class="scenario-btn" onclick="runScenario('full_charge')">
+          <div>
+            <strong>7. Battery Full Charge Event</strong>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">PA2 &gt;= 1.5V &rarr; All 4 LEDs Solid On</div>
+          </div>
+          <span class="tag">FULL</span>
+        </button>
+
+        <button class="scenario-btn" onclick="runScenario('low_cutoff')">
+          <div>
+            <strong>8. Critical Low Battery Cutoff</strong>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Drop &lt; 3.05V &rarr; 3 Red Flashes &rarr; Stop</div>
+          </div>
+          <span class="tag">CUTOFF</span>
+        </button>
+      </div>
+
+      <div class="card-title" style="margin-top: 0.5rem;">
+        <span>AMT49406 EEPROM Register Table</span>
+      </div>
+
+      <div style="overflow-y: auto; max-height: 280px;">
+        <table class="reg-table">
+          <thead>
+            <tr>
+              <th>Reg</th>
+              <th>Parameter</th>
+              <th>Golden (Cfg1)</th>
+              <th>Chip Read</th>
+            </tr>
+          </thead>
+          <tbody id="reg-table-body">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    /* ============================================================
+     * FIRMWARE CONFIG & CONSTANTS MATCHING C SOURCE
+     * ============================================================ */
+    const GOLDEN_CONFIG_1 = {
+      8:  16784, // Rated Speed 400
+      9:  29040, // Resistance 113
+      10: 25376, // Rated Current 800 (Raw 800 + 24576)
+      11: 54400, // Startup mode 1
+      12: 1842,  // Observer P 50
+      13: 30,    // Observer I 30
+      15: 2432,  // Deadtime 9
+      16: 10860, // OCP 4
+      17: 512,   // I2C_SPD_MODE = 1
+      18: 2816,  // IPD Threshold
+      20: 11836, // Rated 12V, Rsense 12.4mOhm
+      21: 32800, // Standby 1
+      22: 33374  // Brake mode 1
+    };
+
+    const SPEED_THROTTLE_TABLE = [
+      0,   // Level 0: Off
+      57,  // Level 1: 11% (Lowest non-zero throttle)
+      107, // Level 2: 21%
+      158, // Level 3: 31%
+      210, // Level 4: 41%
+      261, // Level 5: 51%
+      312, // Level 6: 61%
+      363, // Level 7: 71%
+      414, // Level 8: 81%
+      465, // Level 9: 91%
+      511  // Level 10: 100%
+    ];
+
+    const BATT_THRESH = {
+      BAR_4: 3900,
+      BAR_3: 3700,
+      BAR_2: 3500,
+      BAR_1: 3350,
+      LOW:   3300,
+      CUTOFF: 3050
+    };
+
+    const COLOR_BLACK  = { r: 0,   g: 0,   b: 0 };
+    const COLOR_RED    = { r: 255, g: 0,   b: 0 };
+    const COLOR_ORANGE = { r: 255, g: 80,  b: 0 };
+    const COLOR_LIME   = { r: 50,  g: 255, b: 0 };
+    const COLOR_GREEN  = { r: 0,   g: 255, b: 0 };
+    const COLOR_CYAN   = { r: 0,   g: 220, b: 255 };
+    const COLOR_PURPLE = { r: 180, g: 0,   b: 255 };
+    const COLOR_YELLOW = { r: 255, g: 190, b: 0 };
+
+    /* Battery display color mapping: Red -> Orange -> Lime -> Green */
+    const BATT_COLORS = [COLOR_RED, COLOR_ORANGE, COLOR_LIME, COLOR_GREEN];
+
+    /* ============================================================
+     * SIMULATED HARDWARE STATE
+     * ============================================================ */
+    const hw = {
+      batteryMvResting: 3850,
+      batteryMvFiltered: 3850,
+      isUsbConnected: false,
+      chargerMode: 'charging', // 'charging' (D1=2V, D2=0V) or 'full' (D1=0V, D2=2V)
+      pa1Mv: 0,
+      pa2Mv: 0,
+      pd6Mv: 3850,
+      chipEEPROM: { ...GOLDEN_CONFIG_1 },
+      motorRpm: 0,
+      fanAngle: 0
+    };
+
+    /* ============================================================
+     * SIMULATED MCU FIRMWARE STATE
+     * ============================================================ */
+    const fw = {
+      state: 'STATE_BOOT', // 'STATE_BOOT', 'STATE_OFF', 'STATE_RUNNING', 'STATE_HALT'
+      isSleepWFI: false,
+      currentLevel: 0,
+      speedFeedbackTimerMs: 0,
+      chargingPhaseMs: 0,
+      offAdcTimerMs: 0,
+      runningAdcTimerMs: 0,
+      chgIntegrator: 0,
+      isCharging: false,
+      isFullCharge: false,
+      currentBars: 3,
+      ledBuffer: [COLOR_BLACK, COLOR_BLACK, COLOR_BLACK, COLOR_BLACK],
+      globalBrightness: 50,
+      bootStep: 0,
+      bootTimerMs: 0
+    };
+
+    let btnPressStart = 0;
+    let btnIsDown = false;
+    let btnInterval = null;
+
+    /* ============================================================
+     * HARDWARE SIMULATION UPDATE (Runs every 20ms)
+     * ============================================================ */
+    function hwUpdate(dtMs) {
+      // 1. IP2312 D1 (PA1) and D2 (PA2) voltage calculation
+      if (hw.isUsbConnected) {
+        if (hw.chargerMode === 'charging') {
+          hw.pa1Mv = 2000;
+          hw.pa2Mv = 0;
+        } else {
+          hw.pa1Mv = 0;
+          hw.pa2Mv = 2000;
+        }
+      } else {
+        hw.pa1Mv = 0;
+        hw.pa2Mv = 0;
+      }
+
+      // 2. Battery Voltage sag calculation based on motor demand
+      const currentDemand = SPEED_THROTTLE_TABLE[fw.currentLevel] || 0;
+      const sagRatio = currentDemand / 511.0;
+      const motorLoadSagMv = Math.round(sagRatio * 180); // Up to 180mV sag at 100%
+      hw.pd6Mv = Math.max(2800, hw.batteryMvResting - motorLoadSagMv);
+
+      // Simple EMA filter
+      hw.batteryMvFiltered = Math.round(hw.batteryMvFiltered * 0.875 + hw.pd6Mv * 0.125);
+
+      // 3. Motor Speed & Spin Simulation
+      let targetRpm = 0;
+      if (fw.state === 'STATE_RUNNING' && fw.currentLevel > 0) {
+        // Map 11%-100% to ~2500 - 18000 RPM
+        targetRpm = 2500 + Math.round((fw.currentLevel - 1) * (15500 / 9));
+      }
+      hw.motorRpm += (targetRpm - hw.motorRpm) * 0.15;
+      if (hw.motorRpm < 50) hw.motorRpm = 0;
+
+      hw.fanAngle = (hw.fanAngle + (hw.motorRpm * 0.006 * dtMs)) % 360;
+    }
+
+    /* ============================================================
+     * FIRMWARE TICK LOOP (Matches main.c logic exactly)
+     * ============================================================ */
+    function fwTick(dtMs) {
+      // ----------------------------------------------------
+      // STATE: BOOT
+      // ----------------------------------------------------
+      if (fw.state === 'STATE_BOOT') {
+        fw.bootTimerMs += dtMs;
+        if (fw.bootStep === 0) {
+          log('FW', 'MCU Boot: Power window capture & I2C Handshake OK');
+          // Check EEPROM match
+          let mismatch = false;
+          for (let k in GOLDEN_CONFIG_1) {
+            if (hw.chipEEPROM[k] !== GOLDEN_CONFIG_1[k]) {
+              mismatch = true;
+              break;
+            }
+          }
+          if (mismatch) {
+            log('FW', 'EEPROM mismatch detected! Auto-flashing golden config 1...');
+            fw.bootStep = 10; // Flash sequence
+            fw.bootTimerMs = 0;
+          } else {
+            log('FW', 'EEPROM Verified OK! Setting Green confirmation (1.2s)...');
+            setLedsAll(COLOR_GREEN);
+            fw.bootStep = 1;
+            fw.bootTimerMs = 0;
+          }
+        } else if (fw.bootStep === 1) {
+          // Waiting 1.2s green confirmation
+          if (fw.bootTimerMs >= 1200) {
+            log('FW', 'Boot check complete. Turning off LEDs & entering STATE_OFF');
+            setLedsAll(COLOR_BLACK);
+            fw.state = 'STATE_OFF';
+            fw.currentLevel = 0;
+            fw.offAdcTimerMs = 0;
+            fw.chgIntegrator = 0;
+            fw.isCharging = false;
+          }
+        } else if (fw.bootStep === 10) {
+          // Flash sequence
+          if (fw.bootTimerMs >= 500) {
+            // Write golden values
+            hw.chipEEPROM = { ...GOLDEN_CONFIG_1 };
+            log('FW', 'EEPROM Flashed successfully! Setting LEDs to Yellow.');
+            log('HW', 'User/programmer must power-cycle device to apply. Halt.');
+            setLedsAll(COLOR_YELLOW);
+            fw.state = 'STATE_HALT';
+          }
+        }
+        return;
+      }
+
+      // ----------------------------------------------------
+      // STATE: HALT (After Flashing Yellow or Error Red)
+      // ----------------------------------------------------
+      if (fw.state === 'STATE_HALT') {
+        return;
+      }
+
+      // ----------------------------------------------------
+      // ADC POLLING (Integrator debouncing & charge detection)
+      // ----------------------------------------------------
+      let adcTriggered = false;
+      if (fw.state === 'STATE_OFF') {
+        fw.offAdcTimerMs += dtMs;
+        if (fw.offAdcTimerMs >= 500) {
+          fw.offAdcTimerMs = 0;
+          adcTriggered = true;
+        }
+      } else if (fw.state === 'STATE_RUNNING') {
+        fw.runningAdcTimerMs += dtMs;
+        if (fw.runningAdcTimerMs >= 500) {
+          fw.runningAdcTimerMs = 0;
+          adcTriggered = true;
+        }
+      }
+
+      if (adcTriggered) {
+        // Read PA1 (Charge In) & PA2 (Full Charge)
+        const pa1Hit = hw.pa1Mv >= 1500;
+        const pa2Hit = hw.pa2Mv >= 1500;
+        const rawPlugged = pa1Hit || pa2Hit;
+
+        // 2-sample integrator debounce
+        if (rawPlugged) {
+          if (fw.chgIntegrator < 2) fw.chgIntegrator++;
+        } else {
+          if (fw.chgIntegrator > 0) fw.chgIntegrator--;
+        }
+
+        const wasCharging = fw.isCharging;
+        fw.isCharging = (fw.chgIntegrator >= 2);
+        fw.isFullCharge = fw.isCharging && pa2Hit;
+
+        if (!wasCharging && fw.isCharging) {
+          log('ADC', `Charger plugged confirmed! D1=${hw.pa1Mv}mV, D2=${hw.pa2Mv}mV`);
+        } else if (wasCharging && !fw.isCharging) {
+          log('ADC', `Charger unplugged confirmed! Returning to dark/sleep.`);
+        }
+
+        // Calculate Battery Bars with 70mV Hysteresis
+        updateBatteryBars(hw.batteryMvFiltered);
+      }
+
+      // ----------------------------------------------------
+      // STATE: OFF
+      // ----------------------------------------------------
+      if (fw.state === 'STATE_OFF') {
+        if (fw.isCharging) {
+          fw.isSleepWFI = false;
+          fw.chargingPhaseMs = (fw.chargingPhaseMs + dtMs) % 4000; // 0.25 Hz period = 4000 ms
+          showChargingLeds(fw.currentBars, fw.chargingPhaseMs, fw.isFullCharge);
+        } else {
+          // Not charging & fan off -> LEDs dark, Enter Sleep Mode (WFI)
+          setLedsAll(COLOR_BLACK);
+          fw.isSleepWFI = true;
+        }
+        return;
+      }
+
+      // ----------------------------------------------------
+      // STATE: RUNNING
+      // ----------------------------------------------------
+      if (fw.state === 'STATE_RUNNING') {
+        fw.isSleepWFI = false;
+
+        // Check critical cutoff
+        if (hw.batteryMvFiltered < BATT_THRESH.CUTOFF) {
+          log('ERR', `Battery cutoff reached (${hw.batteryMvFiltered}mV < 3050mV)! Turning off.`);
+          fw.currentLevel = 0;
+          fw.state = 'STATE_OFF';
+          setLedsAll(COLOR_RED);
+          setTimeout(() => { setLedsAll(COLOR_BLACK); }, 800);
+          return;
+        }
+
+        // Speed Feedback Timer Countdown (1.5s)
+        if (fw.speedFeedbackTimerMs > 0) {
+          fw.speedFeedbackTimerMs = Math.max(0, fw.speedFeedbackTimerMs - dtMs);
+          showSpeedLevelLeds(fw.currentLevel);
+        } else {
+          // Revert to Battery / Charging indication
+          if (fw.isCharging) {
+            fw.chargingPhaseMs = (fw.chargingPhaseMs + dtMs) % 4000; // 0.25 Hz
+            showChargingLeds(fw.currentBars, fw.chargingPhaseMs, fw.isFullCharge);
+          } else {
+            showBatteryBarsLeds(fw.currentBars, hw.batteryMvFiltered < BATT_THRESH.LOW);
+          }
+        }
+      }
+    }
+
+    /* ============================================================
+     * BATTERY BAR HYSTERESIS CALCULATION
+     * ============================================================ */
+    function updateBatteryBars(mv) {
+      switch (fw.currentBars) {
+        case 4:
+          if (mv < (BATT_THRESH.BAR_4 - 40)) fw.currentBars = 3;
+          break;
+        case 3:
+          if (mv >= (BATT_THRESH.BAR_4 + 30)) fw.currentBars = 4;
+          else if (mv < (BATT_THRESH.BAR_3 - 40)) fw.currentBars = 2;
+          break;
+        case 2:
+          if (mv >= (BATT_THRESH.BAR_3 + 30)) fw.currentBars = 3;
+          else if (mv < (BATT_THRESH.BAR_2 - 40)) fw.currentBars = 1;
+          break;
+        case 1:
+          if (mv >= (BATT_THRESH.BAR_2 + 30)) fw.currentBars = 2;
+          else if (mv < (BATT_THRESH.BAR_1 - 40)) fw.currentBars = 0;
+          break;
+        case 0:
+        default:
+          if (mv >= (BATT_THRESH.BAR_1 + 30)) fw.currentBars = 1;
+          break;
+      }
+    }
+
+    /* ============================================================
+     * WS2812B VISUAL LOGIC FUNCTIONS
+     * ============================================================ */
+    function setLedsAll(c) {
+      for (let i = 0; i < 4; i++) fw.ledBuffer[i] = c;
+    }
+
+    // Speed feedback:
+    // 1-4: Cyan (1 to 4 LEDs)
+    // 5-8: Purple (1 to 4 LEDs)
+    // 9-10: Lime (2 LEDs for L9, 4 LEDs for L10)
+    function showSpeedLevelLeds(level) {
+      setLedsAll(COLOR_BLACK);
+      if (level >= 1 && level <= 4) {
+        for (let i = 0; i < level; i++) fw.ledBuffer[i] = COLOR_CYAN;
+      } else if (level >= 5 && level <= 8) {
+        const count = level - 4;
+        for (let i = 0; i < count; i++) fw.ledBuffer[i] = COLOR_PURPLE;
+      } else if (level >= 9 && level <= 10) {
+        const count = (level === 9) ? 2 : 4;
+        for (let i = 0; i < count; i++) fw.ledBuffer[i] = COLOR_LIME;
+      }
+    }
+
+    // Battery Bars: Red -> Orange -> Lime -> Green
+    function showBatteryBarsLeds(bars, isLow) {
+      setLedsAll(COLOR_BLACK);
+      if (isLow) {
+        // Blink LED 0 in red
+        const blink = Math.floor(Date.now() / 250) % 2 === 0;
+        if (blink) fw.ledBuffer[0] = COLOR_RED;
+      } else {
+        for (let i = 0; i < 4; i++) {
+          if (i < bars) fw.ledBuffer[i] = BATT_COLORS[i];
+          else fw.ledBuffer[i] = COLOR_BLACK;
+        }
+      }
+    }
+
+    // Charging Animation:
+    // Period = 4000ms (0.25 Hz). Smooth breathing on highest bar.
+    // Lower bars stay solid. If full, all 4 solid.
+    function showChargingLeds(bars, phaseMs, isFull) {
+      if (isFull) {
+        for (let i = 0; i < 4; i++) fw.ledBuffer[i] = BATT_COLORS[i];
+        return;
+      }
+
+      // Smooth cosine ease breathing factor (0.1 to 1.0)
+      const t = (phaseMs % 4000) / 4000;
+      const breathFactor = 0.12 + 0.88 * (0.5 * (1 - Math.cos(2 * Math.PI * t)));
+
+      const activeIdx = Math.max(0, Math.min(3, bars > 0 ? bars - 1 : 0));
+
+      for (let i = 0; i < 4; i++) {
+        if (i < activeIdx) {
+          fw.ledBuffer[i] = BATT_COLORS[i]; // Lower bars solid
+        } else if (i === activeIdx) {
+          // Highest active bar breathes
+          const c = BATT_COLORS[i];
+          fw.ledBuffer[i] = {
+            r: Math.round(c.r * breathFactor),
+            g: Math.round(c.g * breathFactor),
+            b: Math.round(c.b * breathFactor)
+          };
+        } else {
+          fw.ledBuffer[i] = COLOR_BLACK;
+        }
+      }
+    }
+
+    /* ============================================================
+     * BUTTON INTERACTION HANDLERS (PD5)
+     * ============================================================ */
+    function onButtonDown() {
+      if (btnIsDown) return;
+      btnIsDown = true;
+      btnPressStart = Date.now();
+      document.getElementById('tactile-btn').classList.add('active');
+
+      const circle = document.getElementById('press-circle');
+      circle.style.strokeDashoffset = '270';
+
+      clearInterval(btnInterval);
+      btnInterval = setInterval(() => {
+        const elapsed = Date.now() - btnPressStart;
+        const progress = Math.min(1.0, elapsed / 1500);
+        circle.style.strokeDashoffset = `${270 - (progress * 270)}`;
+
+        if (elapsed >= 1500) {
+          clearInterval(btnInterval);
+          handleButtonEvent('LONG_PRESS');
+        }
+      }, 30);
+    }
+
+    function onButtonUp() {
+      if (!btnIsDown) return;
+      btnIsDown = false;
+      document.getElementById('tactile-btn').classList.remove('active');
+      clearInterval(btnInterval);
+
+      const elapsed = Date.now() - btnPressStart;
+      document.getElementById('press-circle').style.strokeDashoffset = '270';
+
+      if (elapsed >= 30 && elapsed < 1500) {
+        handleButtonEvent('SHORT_PRESS');
+      }
+    }
+
+    function handleButtonEvent(ev) {
+      log('HW', `Button Event: ${ev}`);
+
+      if (fw.state === 'STATE_OFF') {
+        if (ev === 'SHORT_PRESS') {
+          fw.state = 'STATE_RUNNING';
+          fw.currentLevel = 1; // Level 1 (11%)
+          fw.speedFeedbackTimerMs = 1500;
+          log('FW', `Fan ON: Level 1 (11% throttle, demand=${SPEED_THROTTLE_TABLE[1]})`);
+        }
+      } else if (fw.state === 'STATE_RUNNING') {
+        if (ev === 'SHORT_PRESS') {
+          fw.currentLevel++;
+          if (fw.currentLevel > 10) {
+            log('FW', 'Max speed reached. Click turns fan OFF.');
+            fw.currentLevel = 0;
+            fw.state = 'STATE_OFF';
+            setLedsAll(COLOR_BLACK);
+          } else {
+            fw.speedFeedbackTimerMs = 1500;
+            log('FW', `Speed incremented -> Level ${fw.currentLevel} (${Math.round((SPEED_THROTTLE_TABLE[fw.currentLevel]/511)*100)}%)`);
+          }
+        } else if (ev === 'LONG_PRESS') {
+          log('FW', 'Long Press >=1.5s -> Turning OFF fan and applying dynamic brake pulse.');
+          fw.currentLevel = 0;
+          fw.state = 'STATE_OFF';
+          setLedsAll(COLOR_BLACK);
+        }
+      }
+    }
+
+    /* ============================================================
+     * CHARGER TOGGLE & ADJUSTMENTS
+     * ============================================================ */
+    function toggleUSBCharger() {
+      hw.isUsbConnected = !hw.isUsbConnected;
+      const btn = document.getElementById('usb-toggle-btn');
+      const dot = document.getElementById('usb-status-dot');
+      const txt = document.getElementById('usb-status-text');
+
+      if (hw.isUsbConnected) {
+        btn.innerText = 'Unplug USB';
+        btn.classList.add('plugged');
+        dot.classList.add('connected');
+        txt.innerText = 'USB Plugged (5V)';
+        log('HW', 'USB Cable Connected (IP2312 active)');
+      } else {
+        btn.innerText = 'Plug Type-C';
+        btn.classList.remove('plugged');
+        dot.classList.remove('connected');
+        txt.innerText = 'USB Unplugged (0V)';
+        log('HW', 'USB Cable Disconnected');
+      }
+    }
+
+    function setChargerMode(mode) {
+      hw.chargerMode = mode;
+      document.getElementById('disp-chg-mode').innerText = 
+        mode === 'charging' ? 'Charging (D1=2.0V, D2=0V)' : 'Full Charge (D1=0V, D2=2.0V)';
+      log('HW', `IP2312 Pins forced to: ${mode.toUpperCase()}`);
+    }
+
+    function onBatterySliderChange(val) {
+      hw.batteryMvResting = Math.round(parseFloat(val) * 1000);
+      document.getElementById('disp-batt-slider').innerText = `${parseFloat(val).toFixed(2)} V`;
+    }
+
+    /* ============================================================
+     * EEPROM CORRUPT & SYNC
+     * ============================================================ */
+    function corruptEEPROM() {
+      hw.chipEEPROM[10] = 0xFFFF; // Corrupt rated current
+      hw.chipEEPROM[8] = 0x0000;
+      updateRegisterTable();
+      log('HW', 'EEPROM wiped / corrupted in simulated AMT49406 storage!');
+      resetMCU();
+    }
+
+    function matchEEPROM() {
+      hw.chipEEPROM = { ...GOLDEN_CONFIG_1 };
+      updateRegisterTable();
+      log('HW', 'EEPROM restored to Golden Config 1');
+      resetMCU();
+    }
+
+    function resetMCU() {
+      log('HW', '=== MCU HARD RESET TRIGGERED ===');
+      fw.state = 'STATE_BOOT';
+      fw.bootStep = 0;
+      fw.bootTimerMs = 0;
+      fw.currentLevel = 0;
+      fw.speedFeedbackTimerMs = 0;
+      setLedsAll(COLOR_BLACK);
+      updateRegisterTable();
+    }
+
+    /* ============================================================
+     * AUTOMATED SCENARIO RUNNER
+     * ============================================================ */
+    function runScenario(id) {
+      log('HW', `--- Running Scenario: ${id.toUpperCase()} ---`);
+      if (id === 'clean_boot') {
+        hw.chipEEPROM = { ...GOLDEN_CONFIG_1 };
+        hw.isUsbConnected = false;
+        resetMCU();
+      } else if (id === 'mismatch_boot') {
+        corruptEEPROM();
+      } else if (id === 'cycle_speed') {
+        if (fw.state === 'STATE_OFF') {
+          handleButtonEvent('SHORT_PRESS');
+        }
+        let step = 0;
+        const interval = setInterval(() => {
+          handleButtonEvent('SHORT_PRESS');
+          step++;
+          if (step >= 10) clearInterval(interval);
+        }, 1600);
+      } else if (id === 'long_press') {
+        if (fw.state === 'STATE_OFF') {
+          handleButtonEvent('SHORT_PRESS');
+        }
+        setTimeout(() => {
+          handleButtonEvent('LONG_PRESS');
+        }, 800);
+      } else if (id === 'plug_off') {
+        fw.state = 'STATE_OFF';
+        if (!hw.isUsbConnected) toggleUSBCharger();
+        setChargerMode('charging');
+      } else if (id === 'unplug_off') {
+        if (hw.isUsbConnected) toggleUSBCharger();
+      } else if (id === 'full_charge') {
+        if (!hw.isUsbConnected) toggleUSBCharger();
+        setChargerMode('full');
+      } else if (id === 'low_cutoff') {
+        if (fw.state === 'STATE_OFF') handleButtonEvent('SHORT_PRESS');
+        document.getElementById('slider-batt').value = 3.00;
+        onBatterySliderChange(3.00);
+      }
+    }
+
+    /* ============================================================
+     * UI RENDERING & TICK TIMER
+     * ============================================================ */
+    function updateRegisterTable() {
+      const tbody = document.getElementById('reg-table-body');
+      tbody.innerHTML = '';
+      let matchCount = 0;
+      for (let reg in GOLDEN_CONFIG_1) {
+        const gold = GOLDEN_CONFIG_1[reg];
+        const chip = hw.chipEEPROM[reg] !== undefined ? hw.chipEEPROM[reg] : 0;
+        const isMatch = gold === chip;
+        if (isMatch) matchCount++;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${reg}</td>
+          <td>${getRegName(parseInt(reg))}</td>
+          <td>${gold}</td>
+          <td class="${isMatch ? 'reg-match' : 'reg-mismatch'}">${chip} ${isMatch ? '✓' : '✗'}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      const summary = document.getElementById('eeprom-summary-text');
+      if (matchCount === 13) {
+        summary.innerHTML = '<span style="color:var(--lime);">EEPROM Status: All 13 registers MATCH golden profile.</span>';
+      } else {
+        summary.innerHTML = `<span style="color:var(--red);">EEPROM Status: ${13 - matchCount} registers MISMATCH! Needs flash.</span>`;
+      }
+    }
+
+    function getRegName(r) {
+      switch(r) {
+        case 8: return 'Rated Speed';
+        case 9: return 'Resistance';
+        case 10: return 'Rated Current';
+        case 11: return 'Startup Mode';
+        case 12: return 'Observer P';
+        case 13: return 'Observer I';
+        case 15: return 'Deadtime';
+        case 16: return 'OCP Limit';
+        case 17: return 'Speed Mode';
+        case 18: return 'IPD Current';
+        case 20: return 'Voltage/Rsense';
+        case 21: return 'Standby Mode';
+        case 22: return 'Brake Mode';
+        default: return `Reg ${r}`;
+      }
+    }
+
+    function log(tag, msg) {
+      const term = document.getElementById('terminal-log');
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      line.innerHTML = `
+        <span class="log-time">${timeStr}</span>
+        <span class="log-tag ${tag}">[${tag}]</span>
+        <span class="log-msg">${msg}</span>
+      `;
+      term.appendChild(line);
+      term.scrollTop = term.scrollHeight;
+    }
+
+    function clearLogs() {
+      document.getElementById('terminal-log').innerHTML = '';
+    }
+
+    // 50 FPS Main Simulation Loop
+    setInterval(() => {
+      const dt = 20;
+      hwUpdate(dt);
+      fwTick(dt);
+
+      // Render LEDs
+      for (let i = 0; i < 4; i++) {
+        const ledElem = document.getElementById(`led-${i}`);
+        const c = fw.ledBuffer[i];
+        if (c.r === 0 && c.g === 0 && c.b === 0) {
+          ledElem.style.background = '#111622';
+          ledElem.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.8)';
+          ledElem.style.borderColor = '#263348';
+        } else {
+          // Scale to 50 brightness cap
+          const scale = fw.globalBrightness / 255.0;
+          const r = Math.round(c.r * scale * 2.5); // boosted visually for screen
+          const g = Math.round(c.g * scale * 2.5);
+          const b = Math.round(c.b * scale * 2.5);
+          const colorRgb = `rgb(${r}, ${g}, ${b})`;
+          ledElem.style.background = colorRgb;
+          ledElem.style.borderColor = colorRgb;
+          ledElem.style.boxShadow = `0 0 14px ${colorRgb}, 0 0 26px ${colorRgb}`;
+        }
+      }
+
+      // Render Fan
+      const blades = document.getElementById('fan-blades');
+      blades.style.transform = `rotate(${hw.fanAngle}deg)`;
+      blades.style.filter = hw.motorRpm > 1000 ? `blur(${Math.min(5, hw.motorRpm / 3500)}px)` : 'none';
+
+      const hub = document.getElementById('fan-hub-text');
+      if (fw.currentLevel === 0) {
+        hub.innerHTML = '0%<br>STOP';
+      } else {
+        const pct = Math.round((SPEED_THROTTLE_TABLE[fw.currentLevel] / 511) * 100);
+        hub.innerHTML = `L${fw.currentLevel}<br>${pct}%`;
+      }
+
+      // Update Rails & Values
+      document.getElementById('val-batt-mv').innerText = `${hw.batteryMvFiltered} mV`;
+      document.getElementById('val-pa1-mv').innerText = `${hw.pa1Mv} mV`;
+      document.getElementById('val-pa2-mv').innerText = `${hw.pa2Mv} mV`;
+
+      // Update State Pills & Counters
+      const pill = document.getElementById('mcu-state-pill');
+      if (fw.state === 'STATE_OFF') {
+        if (fw.isSleepWFI) {
+          pill.className = 'state-pill sleep';
+          pill.innerText = 'SLEEP (WFI)';
+        } else {
+          pill.className = 'state-pill off';
+          pill.innerText = 'STATE_OFF';
+        }
+      } else if (fw.state === 'STATE_RUNNING') {
+        pill.className = 'state-pill running';
+        pill.innerText = `RUNNING (L${fw.currentLevel})`;
+      } else if (fw.state === 'STATE_BOOT') {
+        pill.className = 'state-pill boot';
+        pill.innerText = 'STATE_BOOT';
+      } else if (fw.state === 'STATE_HALT') {
+        pill.className = 'state-pill off';
+        pill.innerText = 'HALTED (CYCLE PWR)';
+      }
+
+      document.getElementById('fw-level-val').innerText = `Level ${fw.currentLevel} (${Math.round((SPEED_THROTTLE_TABLE[fw.currentLevel]/511)*100)}%)`;
+      document.getElementById('fw-demand-val').innerText = `${SPEED_THROTTLE_TABLE[fw.currentLevel]} / 511`;
+      document.getElementById('fw-timer-val').innerText = `${fw.speedFeedbackTimerMs} ms`;
+      document.getElementById('fw-breath-val').innerText = fw.isCharging ? `${(fw.chargingPhaseMs / 1000).toFixed(2)}s / 4.0s` : '--';
+
+    }, 20);
+
+    // Initial setup
+    updateRegisterTable();
+    log('FW', 'Simulator initialized. Golden profile 1 active (Rated Current = 800).');
+  </script>
+</body>
+</html>

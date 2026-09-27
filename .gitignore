@@ -1,0 +1,15 @@
+.pio
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch
+
+amt49406_config1.json
+amt49406_config0.json
+
+amt49406_register_and_eeprom_guide.md
+AMT49406-Datasheet.pdf
+an296259_text.txt
+AN296259-AMT49406-Accurate-Startup-Techniques.pdf
+flash_firmware.bat
+launch_gui.bat

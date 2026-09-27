@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AMT49406 Config Profile Studio — M2 Custom Board</title>
+  <meta name="description" content="Visual configuration editor, register inspector, and C header generator for AMT49406 BLDC driver EEPROM profiles.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0e17;
+      --bg-card: rgba(18, 24, 38, 0.75);
+      --bg-card-hover: rgba(26, 34, 52, 0.85);
+      --border-card: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(0, 220, 220, 0.4);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent-cyan: #00e5ff;
+      --accent-purple: #c084fc;
+      --accent-lime: #a3e635;
+      --accent-green: #22c55e;
+      --accent-orange: #fb923c;
+      --accent-red: #f87171;
+      --accent-yellow: #facc15;
+      --glow-cyan: 0 0 25px rgba(0, 229, 255, 0.25);
+      --glow-purple: 0 0 25px rgba(192, 132, 252, 0.25);
+      --font-main: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(0, 229, 255, 0.07) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(192, 132, 252, 0.07) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, rgba(163, 230, 53, 0.03) 0px, transparent 50%);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      line-height: 1.5;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1360px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, #00e5ff 0%, #a855f7 100%);
+      color: #000;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      letter-spacing: 0.5px;
+      box-shadow: var(--glow-cyan);
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button, label.btn {
+      font-family: var(--font-main);
+      font-weight: 600;
+      font-size: 13px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border-card);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.2) 0%, rgba(192, 132, 252, 0.2) 100%);
+      border-color: var(--border-accent);
+      color: var(--accent-cyan);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.35) 0%, rgba(192, 132, 252, 0.35) 100%);
+      border-color: var(--accent-cyan);
+      box-shadow: var(--glow-cyan);
+      transform: translateY(-1px);
+    }
+
+    .btn-preset {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+    }
+    .btn-preset:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-active-preset {
+      background: rgba(163, 230, 53, 0.15) !important;
+      border-color: var(--accent-lime) !important;
+      color: var(--accent-lime) !important;
+      box-shadow: 0 0 15px rgba(163, 230, 53, 0.2);
+    }
+
+    .btn-save {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #fff;
+      border: none;
+    }
+    .btn-save:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .grid-layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .grid-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-card);
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 24px;
+      transition: border-color 0.2s ease;
+    }
+    .card:hover {
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .card-title span.tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+    input[type="text"]:focus, input[type="number"]:focus, select:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+      background: rgba(0, 0, 0, 0.6);
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-family: var(--font-mono);
+    }
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge-reg {
+      background: rgba(0, 229, 255, 0.12);
+      color: var(--accent-cyan);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .badge-diff {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-yellow);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    .code-preview {
+      background: #06090e;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #94a3b8;
+      max-height: 280px;
+      overflow-y: auto;
+      white-space: pre;
+    }
+
+    .led-strip-preview {
+      display: flex;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 10px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .led-dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #111;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .led-dot.cyan { background: var(--accent-cyan); box-shadow: 0 0 12px var(--accent-cyan); }
+    .led-dot.purple { background: var(--accent-purple); box-shadow: 0 0 12px var(--accent-purple); }
+    .led-dot.lime { background: var(--accent-lime); box-shadow: 0 0 12px var(--accent-lime); }
+    .led-dot.green { background: var(--accent-green); box-shadow: 0 0 12px var(--accent-green); }
+    .led-dot.orange { background: var(--accent-orange); box-shadow: 0 0 12px var(--accent-orange); }
+    .led-dot.red { background: var(--accent-red); box-shadow: 0 0 12px var(--accent-red); }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e293b;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      border: 1px solid var(--accent-cyan);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      font-weight: 500;
+      font-size: 13px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s ease;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="brand">
+        <span class="brand-badge">AMT49406</span>
+        <div>
+          <h1>Profile Studio &amp; Register Editor</h1>
+          <p class="subtitle">Custom Board BLDC Configuration Manager &bull; CH32V003 Firmware Sync</p>
+        </div>
+      </div>
+        <a href="simulator.html" class="btn btn-preset" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; color: var(--accent-cyan); border-color: rgba(0, 229, 255, 0.4);">
+          <span>&#9654; Live Simulator</span>
+        </a>
+        <button id="btn-load-cfg0" class="btn-preset">Load Config 0</button>
+        <button id="btn-load-cfg1" class="btn-preset btn-active-preset">Load Config 1 (Default)</button>
+        <label for="file-input" class="btn btn-preset">
+          <span>&uarr; Import JSON</span>
+          <input type="file" id="file-input" accept=".json" style="display: none;">
+        </label>
+        <button id="btn-export-json" class="btn-save">&darr; Export JSON</button>
+      </div>
+    </header>
+
+    <div class="grid-layout">
+      <!-- Left Column: High Level Parameters & Firmware Export -->
+      <aside>
+        <div class="card">
+          <div class="card-title">
+            Profile Metadata
+            <span class="tag" id="profile-tag">Config 1</span>
+          </div>
+          <div class="form-group">
+            <label for="input-profile-name">Profile Name</label>
+            <input type="text" id="input-profile-name" value="Config1_RatedSpd400_Default">
+          </div>
+          <div class="form-group">
+            <label for="input-notes">Notes</label>
+            <input type="text" id="input-notes" value="Configured for rated speed 400 & current 800 (Config 1)">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            Motor Parameters
+            <span class="tag">Decoded</span>
+          </div>
+          <div class="form-group">
+            <label for="input-supply-v">Supply Voltage (V)</label>
+            <input type="text" id="input-supply-v" value="12.0">
+          </div>
+          <div class="form-group">
+            <label for="input-pole-pairs">Pole Pairs</label>
+            <input type="number" id="input-pole-pairs" value="7">
+          </div>
+          <div class="form-group">
+            <label for="input-rated-speed">Rated Speed Raw (Reg 8)</label>
+            <input type="number" id="input-rated-speed" value="400">
+          </div>
+          <div class="form-group">
+            <label for="input-motor-r">Motor Resistance Raw (Reg 9)</label>
+            <input type="number" id="input-motor-r" value="113">
+          </div>
+          <div class="form-group">
+            <label for="input-rated-current">Rated Current Raw (Reg 10)</label>
+            <input type="number" id="input-rated-current" value="800">
+          </div>
+          <div class="form-group">
+            <label for="input-observer-p">Observer PID P (Reg 12)</label>
+            <input type="number" id="input-observer-p" value="50">
+          </div>
+          <div class="form-group">
+            <label for="input-observer-i">Observer PID I (Reg 13)</label>
+            <input type="number" id="input-observer-i" value="30">
+          </div>
+          <div class="form-group">
+            <label for="input-deadtime">Deadtime Code (Reg 15)</label>
+            <input type="number" id="input-deadtime" value="9">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            C Header Snippet
+            <button id="btn-copy-c" class="btn-primary" style="padding: 4px 10px; font-size: 11px;">Copy C</button>
+          </div>
+          <div class="code-preview" id="c-header-preview"></div>
+        </div>
+      </aside>
+
+      <!-- Right Column: Register Map & Live Diff Table -->
+      <main>
+        <div class="card">
+          <div class="card-title">
+            EEPROM Golden Register Map (Words 8 to 22)
+            <span class="tag" id="active-profile-indicator">13 Managed Registers</span>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Word / Addr</th>
+                  <th>Parameter Description</th>
+                  <th>Value (Dec)</th>
+                  <th>Hex</th>
+                  <th>Config 0 Ref</th>
+                  <th>Config 1 Ref</th>
+                </tr>
+              </thead>
+              <tbody id="register-table-body">
+                <!-- Dynamically generated rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- WS2812 Visual Indicator Legend -->
+        <div class="card">
+          <div class="card-title">
+            Firmware WS2812B 4-LED Color Scheme
+            <span class="tag">0.25 Hz Breathing</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+            <div>
+              <div style="font-size: 12px; font-weight: 600; color: var(--accent-cyan); margin-bottom: 6px;">Fan Power Levels 1–4</div>
+              <p style="font-size: 12px; color: var(--text-muted);">1 to 4 LEDs lit solid Cyan (Feedback for 1.5s)</p>
+              <div class="led-strip-preview">
+                <div class="led-dot cyan"></div>
+                <div class="led-dot cyan"></div>
+                <div class="led-dot cyan"></div>
+                <div class="led-dot"></div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size: 12px; font-weight: 600; color: var(--accent-purple); margin-bottom: 6px;">Fan Power Levels 5–8</div>
+              <p style="font-size: 12px; color: var(--text-muted);">1 to 4 LEDs lit solid Purple (Feedback for 1.5s)</p>
+              <div class="led-strip-preview">
+                <div class="led-dot purple"></div>
+                <div class="led-dot purple"></div>
+                <div class="led-dot"></div>
+                <div class="led-dot"></div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size: 12px; font-weight: 600; color: var(--accent-lime); margin-bottom: 6px;">Fan Power Levels 9–10</div>
+              <p style="font-size: 12px; color: var(--text-muted);">2 or 4 LEDs lit solid Lime (Feedback for 1.5s)</p>
+              <div class="led-strip-preview">
+                <div class="led-dot lime"></div>
+                <div class="led-dot lime"></div>
+                <div class="led-dot lime"></div>
+                <div class="led-dot lime"></div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size: 12px; font-weight: 600; color: var(--accent-green); margin-bottom: 6px;">Battery Gauge / Charging</div>
+              <p style="font-size: 12px; color: var(--text-muted);">Red &rarr; Orange &rarr; Lime &rarr; Green (0.25 Hz breath)</p>
+              <div class="led-strip-preview">
+                <div class="led-dot red"></div>
+                <div class="led-dot orange"></div>
+                <div class="led-dot lime"></div>
+                <div class="led-dot green"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">Profile Loaded Successfully</div>
+
+  <script>
+    /* Default Embedded Profiles */
+    const PRESET_CONFIG0 = {
+      "appName": "M2 Handheld Fan — AMT49406 Studio",
+      "schemaVersion": "2.0",
+      "profileName": "Config0_RatedSpd314",
+      "notes": "Backup from original motor (Rated Speed 314)",
+      "motorParameters": {
+        "supplyVoltageV": "12.0",
+        "polePairs": 7,
+        "ratedSpeedRaw": 314,
+        "motorResistanceRaw": 113,
+        "ratedCurrentRaw": 628,
+        "startupMode": 1,
+        "closedLoop": 0,
+        "observerP": 50,
+        "observerI": 30,
+        "deadtimeRaw": 9,
+        "ocpRaw": 4
+      },
+      "activeRegisters": {
+        "8": 16698,
+        "9": 29040,
+        "10": 25204,
+        "11": 54400,
+        "12": 1842,
+        "13": 30,
+        "15": 2432,
+        "16": 10860,
+        "17": 640,
+        "18": 2816,
+        "20": 11836,
+        "21": 32800,
+        "22": 33374
+      }
+    };
+
+    const PRESET_CONFIG1 = {
+      "appName": "M2 Handheld Fan — AMT49406 Studio",
+      "schemaVersion": "2.0",
+      "profileName": "Config1_RatedSpd400_Default",
+      "notes": "Custom Board High-Torque Golden Profile (Rated Speed 400)",
+      "motorParameters": {
+        "supplyVoltageV": "12.0",
+        "polePairs": 7,
+        "ratedSpeedRaw": 400,
+        "motorResistanceRaw": 113,
+        "ratedCurrentRaw": 800,
+        "startupMode": 1,
+        "closedLoop": 0,
+        "observerP": 50,
+        "observerI": 30,
+        "deadtimeRaw": 9,
+        "ocpRaw": 4
+      },
+      "activeRegisters": {
+        "8": 16784,
+        "9": 29040,
+        "10": 25376,
+        "11": 54400,
+        "12": 1842,
+        "13": 30,
+        "15": 2432,
+        "16": 10860,
+        "17": 512,
+        "18": 2816,
+        "20": 11836,
+        "21": 32800,
+        "22": 33374
+      }
+    };
+
+    const REGISTER_METADATA = [
+      { addr: 8,  name: "Rated Speed", desc: "Speed scaling raw code (Bits 0-8: SPD, Bit 14: EN)" },
+      { addr: 9,  name: "Motor Resistance & Accel", desc: "Phase resistance code & acceleration ramp rate" },
+      { addr: 10, name: "Rated Current", desc: "Motor nominal current limit code & control mode" },
+      { addr: 11, name: "Startup Mode & Power", desc: "Initial positioning & open-loop drive ramp" },
+      { addr: 12, name: "Observer PID Proportional", desc: "Observer PLL proportional gain (P)" },
+      { addr: 13, name: "Observer PID Integral", desc: "Observer PLL integral gain (I)" },
+      { addr: 15, name: "Deadtime & Soft Ramp", desc: "Gate drive deadtime (400ns) & soft start" },
+      { addr: 16, name: "OCP Filter & Deglitch", desc: "Overcurrent protection threshold & filter time" },
+      { addr: 17, name: "Speed Control Mode", desc: "I2C speed control enable (Bit 9) & default demand" },
+      { addr: 18, name: "IPD Threshold", desc: "Initial Position Detection inductive pulse current" },
+      { addr: 20, name: "Rated Voltage & Rsense", desc: "System supply voltage (12V) & shunt resistor value" },
+      { addr: 21, name: "Standby Mode", desc: "Low power standby control & sleep enable" },
+      { addr: 22, name: "Brake Mode & Ratio", desc: "Active dynamic brake config & deceleration ratio" }
+    ];
+
+    let currentProfile = JSON.parse(JSON.stringify(PRESET_CONFIG1));
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.innerText = msg;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2500);
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("register-table-body");
+      tbody.innerHTML = "";
+
+      REGISTER_METADATA.forEach(reg => {
+        const val = currentProfile.activeRegisters[reg.addr.toString()] || 0;
+        const cfg0Val = PRESET_CONFIG0.activeRegisters[reg.addr.toString()] || 0;
+        const cfg1Val = PRESET_CONFIG1.activeRegisters[reg.addr.toString()] || 0;
+
+        const isDiff0 = val !== cfg0Val;
+        const isDiff1 = val !== cfg1Val;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><span class="badge-reg">Word ${reg.addr}</span></td>
+          <td>
+            <strong>${reg.name}</strong>
+            <div style="font-size: 11px; color: var(--text-dim);">${reg.desc}</div>
+          </td>
+          <td>
+            <input type="number" data-reg="${reg.addr}" value="${val}" style="width: 110px;" onchange="onRegValueChange(${reg.addr}, this.value)">
+          </td>
+          <td style="color: var(--accent-cyan); font-weight: 600;">0x${val.toString(16).toUpperCase().padStart(4, '0')}</td>
+          <td style="color: ${isDiff0 ? 'var(--accent-orange)' : 'var(--text-muted)'};">
+            ${cfg0Val} ${isDiff0 ? '<span class="badge-diff">&ne;</span>' : ''}
+          </td>
+          <td style="color: ${isDiff1 ? 'var(--accent-lime)' : 'var(--text-muted)'};">
+            ${cfg1Val} ${isDiff1 ? '<span class="badge-diff">&ne;</span>' : ''}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      renderCHeader();
+    }
+
+    function onRegValueChange(addr, valStr) {
+      const val = parseInt(valStr, 10);
+      if (!isNaN(val)) {
+        currentProfile.activeRegisters[addr.toString()] = val;
+        renderTable();
+      }
+    }
+
+    function renderCHeader() {
+      const regs = currentProfile.activeRegisters;
+      const snippet = `/* Auto-generated from AMT49406 Config Studio */
+#define CFG_PROFILE_NAME       "${currentProfile.profileName}"
+#define CFG_REG_8              ${regs["8"] || 0}   /* Rated Speed */
+#define CFG_REG_9              ${regs["9"] || 0}   /* Motor Resistance */
+#define CFG_REG_10             ${regs["10"] || 0}  /* Rated Current */
+#define CFG_REG_11             ${regs["11"] || 0}  /* Startup Mode */
+#define CFG_REG_12             ${regs["12"] || 0}  /* Observer P */
+#define CFG_REG_13             ${regs["13"] || 0}  /* Observer I */
+#define CFG_REG_15             ${regs["15"] || 0}  /* Deadtime */
+#define CFG_REG_16             ${regs["16"] || 0}  /* OCP Filter */
+#define CFG_REG_17             ${regs["17"] || 0}  /* Speed Ctrl */
+#define CFG_REG_18             ${regs["18"] || 0}  /* IPD Threshold */
+#define CFG_REG_20             ${regs["20"] || 0}  /* Rated Voltage */
+#define CFG_REG_21             ${regs["21"] || 0}  /* Standby Mode */
+#define CFG_REG_22             ${regs["22"] || 0}  /* Brake Mode */`;
+
+      document.getElementById("c-header-preview").textContent = snippet;
+    }
+
+    function syncFormFromProfile() {
+      document.getElementById("input-profile-name").value = currentProfile.profileName || "Untitled_Profile";
+      document.getElementById("input-notes").value = currentProfile.notes || "";
+      if (currentProfile.motorParameters) {
+        document.getElementById("input-supply-v").value = currentProfile.motorParameters.supplyVoltageV || "12.0";
+        document.getElementById("input-pole-pairs").value = currentProfile.motorParameters.polePairs || 7;
+        document.getElementById("input-rated-speed").value = currentProfile.motorParameters.ratedSpeedRaw || 400;
+        document.getElementById("input-motor-r").value = currentProfile.motorParameters.motorResistanceRaw || 113;
+        document.getElementById("input-rated-current").value = currentProfile.motorParameters.ratedCurrentRaw || 800;
+        document.getElementById("input-observer-p").value = currentProfile.motorParameters.observerP || 50;
+        document.getElementById("input-observer-i").value = currentProfile.motorParameters.observerI || 30;
+        document.getElementById("input-deadtime").value = currentProfile.motorParameters.deadtimeRaw || 9;
+      }
+      renderTable();
+    }
+
+    function syncProfileFromForm() {
+      currentProfile.profileName = document.getElementById("input-profile-name").value;
+      currentProfile.notes = document.getElementById("input-notes").value;
+      currentProfile.motorParameters = {
+        supplyVoltageV: document.getElementById("input-supply-v").value,
+        polePairs: parseInt(document.getElementById("input-pole-pairs").value, 10),
+        ratedSpeedRaw: parseInt(document.getElementById("input-rated-speed").value, 10),
+        motorResistanceRaw: parseInt(document.getElementById("input-motor-r").value, 10),
+        ratedCurrentRaw: parseInt(document.getElementById("input-rated-current").value, 10),
+        startupMode: 1,
+        closedLoop: 0,
+        observerP: parseInt(document.getElementById("input-observer-p").value, 10),
+        observerI: parseInt(document.getElementById("input-observer-i").value, 10),
+        deadtimeRaw: parseInt(document.getElementById("input-deadtime").value, 10),
+        ocpRaw: 4
+      };
+      currentProfile.exportDate = new Date().toISOString();
+      currentProfile.exportDateFormatted = new Date().toLocaleString();
+    }
+
+    /* Event Listeners */
+    document.getElementById("btn-load-cfg0").addEventListener("click", () => {
+      currentProfile = JSON.parse(JSON.stringify(PRESET_CONFIG0));
+      document.getElementById("btn-load-cfg0").classList.add("btn-active-preset");
+      document.getElementById("btn-load-cfg1").classList.remove("btn-active-preset");
+      document.getElementById("profile-tag").innerText = "Config 0";
+      syncFormFromProfile();
+      showToast("Loaded Config 0 (Rated Speed 314)");
+    });
+
+    document.getElementById("btn-load-cfg1").addEventListener("click", () => {
+      currentProfile = JSON.parse(JSON.stringify(PRESET_CONFIG1));
+      document.getElementById("btn-load-cfg1").classList.add("btn-active-preset");
+      document.getElementById("btn-load-cfg0").classList.remove("btn-active-preset");
+      document.getElementById("profile-tag").innerText = "Config 1 (Default)";
+      syncFormFromProfile();
+      showToast("Loaded Config 1 (Rated Speed 400 - Default)");
+    });
+
+    document.getElementById("file-input").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const json = JSON.parse(event.target.result);
+          if (json.activeRegisters) {
+            currentProfile = json;
+            document.getElementById("profile-tag").innerText = json.profileName || "Custom";
+            document.getElementById("btn-load-cfg0").classList.remove("btn-active-preset");
+            document.getElementById("btn-load-cfg1").classList.remove("btn-active-preset");
+            syncFormFromProfile();
+            showToast("Imported JSON: " + file.name);
+          } else {
+            alert("Invalid config JSON format: missing activeRegisters field.");
+          }
+        } catch (err) {
+          alert("Error parsing JSON file: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    document.getElementById("btn-export-json").addEventListener("click", () => {
+      syncProfileFromForm();
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentProfile, null, 2));
+      const downloadAnchor = document.createElement("a");
+      const filename = (currentProfile.profileName || "amt49406_config") + ".json";
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", filename);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast("Exported " + filename);
+    });
+
+    document.getElementById("btn-copy-c").addEventListener("click", () => {
+      const code = document.getElementById("c-header-preview").textContent;
+      navigator.clipboard.writeText(code).then(() => {
+        showToast("C Header Snippet Copied to Clipboard!");
+      });
+    });
+
+    /* Initial Load */
+    syncFormFromProfile();
+  </script>
+</body>
+</html>
