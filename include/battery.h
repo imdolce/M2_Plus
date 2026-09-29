@@ -27,8 +27,9 @@ extern "C" {
 #define BATT_THRESH_CUTOFF               3050   /* <  3.05V: Critical Cutoff */
 
 /* IP2312 Charging detection threshold:
- * 1.50V threshold at 5.0V reference: (1.5 / 5.0) * 1023 = 307 counts */
-#define IP2312_DETECT_THRESHOLD_ADC      307
+ * 1.20V threshold at 5.0V reference: (1.20 / 5.0) * 1023 = 245 counts.
+ * Provides ample margin above ground noise (< 0.5V) and below active IP2312 LED driver (~2.0V). */
+#define IP2312_DETECT_THRESHOLD_ADC      245
 
 void Battery_Init(void);
 void Battery_Update(uint8_t speed_level);
@@ -43,9 +44,6 @@ void Battery_ResetChargeDetect(void);
 uint16_t Battery_GetRawPA1(void);
 uint16_t Battery_GetRawPA2(void);
 uint16_t Battery_GetRawPD6(void);
-
-/* Setup PA1 as EXTI interrupt for charge-plug wakeup from sleep */
-void Battery_Prepare_Sleep_EXTI(void);
 
 #ifdef __cplusplus
 }

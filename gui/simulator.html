@@ -1147,21 +1147,21 @@
       }
 
       if (adcTriggered) {
-        // Read PA1 (Charge In) & PA2 (Full Charge)
-        const pa1Hit = hw.pa1Mv >= 1500;
-        const pa2Hit = hw.pa2Mv >= 1500;
+        // Read PA1 (Charge In) & PA2 (Full Charge) with 1.2V threshold
+        const pa1Hit = hw.pa1Mv >= 1200;
+        const pa2Hit = hw.pa2Mv >= 1200;
         const rawPlugged = pa1Hit || pa2Hit;
 
-        // 2-sample integrator debounce
+        // Integrator debounce: 2 hits to confirm charge, 3 misses to confirm unplug
         if (rawPlugged) {
-          if (fw.chgIntegrator < 2) fw.chgIntegrator++;
+          if (fw.chgIntegrator < 3) fw.chgIntegrator++;
         } else {
           if (fw.chgIntegrator > 0) fw.chgIntegrator--;
         }
 
         const wasCharging = fw.isCharging;
         fw.isCharging = (fw.chgIntegrator >= 2);
-        fw.isFullCharge = fw.isCharging && pa2Hit;
+        fw.isFullCharge = fw.isCharging && pa2Hit && !pa1Hit;
 
         if (!wasCharging && fw.isCharging) {
           log('ADC', `Charger plugged confirmed! D1=${hw.pa1Mv}mV, D2=${hw.pa2Mv}mV`);

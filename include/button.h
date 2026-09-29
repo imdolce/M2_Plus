@@ -19,9 +19,6 @@ uint8_t button_is_down(void);
 void button_poll(uint16_t delta_ms);
 button_event_t button_get_event(void);
 
-/* Configure PD5 EXTI falling edge for low power sleep wakeup */
-void button_prepare_sleep_exti(void);
-
 #ifdef __cplusplus
 }
 #endif

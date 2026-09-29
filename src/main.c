@@ -149,9 +149,9 @@ int main(void) {
                 Battery_Update(0);
             }
 
-            /* 3. LED Behavior & Power Saving in OFF state:
-             * If charge detection pin > 1.5V: Turn on battery LEDs & indicate charge status
-             * If not charging: All LEDs stay completely OFF */
+            /* 3. LED Behavior in OFF state:
+             * If charging: indicate charge status (0.25 Hz breathing, or solid if full)
+             * If not charging: all LEDs stay completely OFF */
             if (Battery_IsCharging()) {
                 charging_phase_ms = (charging_phase_ms + 20) % 4000; /* 0.25 Hz breathing (4000ms period) */
                 ws2812_show_charging(Battery_GetBars(), charging_phase_ms, Battery_IsFullCharge());
@@ -161,11 +161,8 @@ int main(void) {
                     ws2812_clear();
                     ws2812_update();
                     prev_charging = 0;
+                    charging_phase_ms = 0;
                 }
-                /* Configure EXTI on PD5 (button falling) and PA1 (charger rising) for sleep wakeup */
-                button_prepare_sleep_exti();
-                Battery_Prepare_Sleep_EXTI();
-                __WFI();
             }
 
             Delay_Ms(20);
@@ -183,7 +180,7 @@ int main(void) {
             if (btn_ev == BUTTON_EVENT_SHORT_PRESS) {
                 current_level++;
                 if (current_level > 10) {
-                    /* Click at max throttle (level 10) -> Turn OFF fan and all LEDs */
+                    /* Click at max throttle (level 10) -> Turn OFF fan */
                     AMT49406_SetSpeed(0);
                     AMT49406_SetBrake(1);
                     Delay_Ms(200);
@@ -192,10 +189,11 @@ int main(void) {
                     current_level = 0;
                     state = STATE_OFF;
                     off_adc_timer_ms = 0;
-                    prev_charging = 0;
-                    Battery_ResetChargeDetect();
-                    ws2812_clear();
-                    ws2812_update();
+                    if (!Battery_IsCharging()) {
+                        ws2812_clear();
+                        ws2812_update();
+                        prev_charging = 0;
+                    }
                     continue;
                 }
                 AMT49406_SetSpeed(SPEED_THROTTLE_TABLE[current_level]);
@@ -203,7 +201,7 @@ int main(void) {
             }
             /* Long Press (1.5s): Turn off immediately */
             else if (btn_ev == BUTTON_EVENT_LONG_PRESS) {
-                /* Press and hold for 1.5s -> Turn OFF fan and all LEDs */
+                /* Press and hold for 1.5s -> Turn OFF fan */
                 AMT49406_SetSpeed(0);
                 AMT49406_SetBrake(1);
                 Delay_Ms(200);
@@ -212,10 +210,11 @@ int main(void) {
                 current_level = 0;
                 state = STATE_OFF;
                 off_adc_timer_ms = 0;
-                prev_charging = 0;
-                Battery_ResetChargeDetect();
-                ws2812_clear();
-                ws2812_update();
+                if (!Battery_IsCharging()) {
+                    ws2812_clear();
+                    ws2812_update();
+                    prev_charging = 0;
+                }
                 continue;
             }
 
@@ -242,10 +241,11 @@ int main(void) {
                 current_level = 0;
                 state = STATE_OFF;
                 off_adc_timer_ms = 0;
-                prev_charging = 0;
-                Battery_ResetChargeDetect();
-                ws2812_clear();
-                ws2812_update();
+                if (!Battery_IsCharging()) {
+                    ws2812_clear();
+                    ws2812_update();
+                    prev_charging = 0;
+                }
                 continue;
             }
 

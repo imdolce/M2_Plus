@@ -1,7 +1,7 @@
 #include "button.h"
 #include <debug.h>
 
-#define DEBOUNCE_TIME_MS      30
+#define DEBOUNCE_TIME_MS      20
 #define LONG_PRESS_TIME_MS    1500
 
 static uint16_t press_duration_ms = 0;
@@ -59,30 +59,4 @@ button_event_t button_get_event(void) {
     button_event_t ev = pending_event;
     pending_event = BUTTON_EVENT_NONE;
     return ev;
-}
-
-void button_prepare_sleep_exti(void) {
-    GPIO_InitTypeDef GPIO_InitStructure = {0};
-    EXTI_InitTypeDef EXTI_InitStructure = {0};
-    NVIC_InitTypeDef NVIC_InitStructure = {0};
-
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD | RCC_APB2Periph_AFIO, ENABLE);
-
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-    GPIO_Init(GPIOD, &GPIO_InitStructure);
-
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOD, GPIO_PinSource5);
-
-    EXTI_InitStructure.EXTI_Line = EXTI_Line5;
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-    EXTI_Init(&EXTI_InitStructure);
-
-    NVIC_InitStructure.NVIC_IRQChannel = EXTI7_0_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-    NVIC_Init(&NVIC_InitStructure);
 }

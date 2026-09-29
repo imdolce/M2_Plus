@@ -30,8 +30,10 @@ void Battery_Init(void) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOD | RCC_APB2Periph_ADC1 | RCC_APB2Periph_AFIO, ENABLE);
     RCC_ADCCLKConfig(RCC_PCLK2_Div8);
 
-    /* Remap PA1 and PA2 from OSC_IN/OSC_OUT to standard GPIO / ADC inputs */
-    GPIO_PinRemapConfig(GPIO_Remap_PA1_2, ENABLE);
+    /* Ensure PA1 and PA2 are standard GPIO / ADC inputs.
+     * In CH32V003 AFIO_PCFR1, bit 15 (PA12_RM) MUST be 0 for GPIO mode.
+     * (Setting bit 15 to 1 puts PA1/PA2 into external crystal oscillator mode). */
+    AFIO->PCFR1 &= ~((uint32_t)1 << 15);
 
     /* PA1 (ADC_Channel_1): Charge in detect
      * PA2 (ADC_Channel_0): Full charge detect
@@ -79,7 +81,16 @@ void Battery_Init(void) {
 }
 
 void Battery_Update(uint8_t speed_level) {
-    /* 1. Read raw ADC on PD6 (Channel 6) */
+    /* 1. Read PA1 (Channel 1, IP2312 D1) and PA2 (Channel 0, IP2312 D2).
+     * Pins are kept permanently in GPIO_Mode_IPD (internal pull-down ~40k):
+     * - When unplugged: D1 and D2 have no external pull-downs or LEDs, so the MCU's
+     *   internal 40k pull-down holds the pins solidly at 0.0V (0 counts).
+     * - When plugged in: IP2312 actively sources 3-10mA, easily driving the pin to
+     *   ~5.0V (1023 counts / logic HIGH) against the 40k pull-down. */
+    last_raw_pa1 = read_adc_channel(ADC_Channel_1);
+    last_raw_pa2 = read_adc_channel(ADC_Channel_0);
+
+    /* 2. Read raw ADC on PD6 (Channel 6, 1S Battery) LAST */
     last_raw_pd6 = read_adc_channel(ADC_Channel_6);
 
     /* Direct conversion: 0-1023 -> 0-5000 mV */
@@ -92,32 +103,21 @@ void Battery_Update(uint8_t speed_level) {
     /* EMA Filter: 7/8 previous + 1/8 new */
     filtered_mv = (uint16_t)(((uint32_t)filtered_mv * 7 + estimated_resting_mv) / 8);
 
-    /* 2. Read PA1 (Channel 1, IP2312 D1) and PA2 (Channel 0, IP2312 D2)
-     * Pins default to IPD (pull-down). Switch to AIN for ADC read,
-     * do a dummy read to flush S&H cap from PD6 voltage, then read for real,
-     * then switch back to IPD to eliminate floating noise. */
-    {
-        GPIO_InitTypeDef gpio = {0};
-        gpio.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2;
-        gpio.GPIO_Mode = GPIO_Mode_AIN;
-        GPIO_Init(GPIOA, &gpio);
+    /* 3. Charging status evaluation:
+     * D1 (PA1): HIGH (~5V) while charging, LOW (0V) when full or unplugged.
+     * D2 (PA2): HIGH (~5V) when full; LOW (0V) when unplugged.
+     * Checked with both ADC reading and digital input pin for absolute stability: */
+    uint8_t pa1_high = (last_raw_pa1 >= IP2312_DETECT_THRESHOLD_ADC) || 
+                       (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1) == Bit_SET);
+    uint8_t pa2_high = (last_raw_pa2 >= IP2312_DETECT_THRESHOLD_ADC) || 
+                       (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_2) == Bit_SET);
 
-        (void)read_adc_channel(ADC_Channel_1); /* Dummy read: flush S&H cap from PD6 */
-        last_raw_pa1 = read_adc_channel(ADC_Channel_1);
-        last_raw_pa2 = read_adc_channel(ADC_Channel_0);
+    uint8_t raw_plugged = pa1_high || pa2_high;
 
-        gpio.GPIO_Mode = GPIO_Mode_IPD;
-        GPIO_Init(GPIOA, &gpio);
-    }
-
-    /* Plugged-in detection: Either D1 >= 1.5V (charging) OR D2 >= 1.5V (full)
-     * 2-sample integrator debounce prevents false triggers from transient noise.
-     * At 500ms polling rate: ~1s to confirm plug-in, ~1s to confirm unplug. */
-    uint8_t raw_plugged = (last_raw_pa1 >= IP2312_DETECT_THRESHOLD_ADC) || 
-                          (last_raw_pa2 >= IP2312_DETECT_THRESHOLD_ADC);
-
+    /* Integrator filter:
+     * Fast latch on plug-in (2 hits = 1s), stable decay on unplug (3 misses = 1.5s). */
     if (raw_plugged) {
-        if (chg_integrator < 2) chg_integrator++;
+        if (chg_integrator < 3) chg_integrator++;
     } else {
         if (chg_integrator > 0) chg_integrator--;
     }
@@ -128,8 +128,14 @@ void Battery_Update(uint8_t speed_level) {
         is_charging = 0;
     }
 
-    /* Full charge detection: D2 >= 1.5V (PA2) while charger is confirmed plugged in */
-    is_full_charge = is_charging && (last_raw_pa2 >= IP2312_DETECT_THRESHOLD_ADC);
+    /* Full charge detection:
+     * D2 is HIGH AND D1 is LOW (IP2312 charging finished).
+     * If D1 is still HIGH, charging is active and any D2 0.5Hz blinking is ignored! */
+    if (is_charging && pa2_high && !pa1_high) {
+        is_full_charge = 1;
+    } else {
+        is_full_charge = 0;
+    }
 }
 
 void Battery_ResetChargeDetect(void) {
@@ -194,31 +200,4 @@ uint16_t Battery_GetRawPA2(void) {
 
 uint16_t Battery_GetRawPD6(void) {
     return last_raw_pd6;
-}
-
-void Battery_Prepare_Sleep_EXTI(void) {
-    GPIO_InitTypeDef GPIO_InitStructure = {0};
-    EXTI_InitTypeDef EXTI_InitStructure = {0};
-    NVIC_InitTypeDef NVIC_InitStructure = {0};
-
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE);
-
-    /* PA1: Charge in detect pin - Pull-Down so it does not float when unplugged */
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource1);
-
-    EXTI_InitStructure.EXTI_Line = EXTI_Line1;
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-    EXTI_Init(&EXTI_InitStructure);
-
-    NVIC_InitStructure.NVIC_IRQChannel = EXTI7_0_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-    NVIC_Init(&NVIC_InitStructure);
 }
