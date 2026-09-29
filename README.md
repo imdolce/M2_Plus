@@ -1,9 +1,8 @@
-# M2 Plus - High-Power 3-Phase BLDC Controller & 3A Fast-Charge Board for Handheld Turbofans
+# M2 Plus - 3-Phase BLDC Controller & 3A Fast-Charge Control Board
 
 ![Model](https://img.shields.io/badge/Model-M2_Plus_v1-blue.svg)
 ![MCU](https://img.shields.io/badge/MCU-WCH_CH32V003F4U6-red.svg)
 ![BLDC Driver](https://img.shields.io/badge/Driver-Allegro_AMT49406-green.svg)
-![Boost Converter](https://img.shields.io/badge/Boost-TPS61088_10A-orange.svg)
 ![Charger](https://img.shields.io/badge/Charger-IP2312-yellow.svg)
 ![License](https://img.shields.io/badge/License-CERN_OHL--P_v2-purple.svg)
 
@@ -17,7 +16,7 @@ The project features auto-programming EEPROM configuration, 10-step throttle map
 > The hardware design consists of **two discrete PCBs**:
 > 1. **M2 Plus Mainboard**: Handles charging, power delivery, motor control, MCU.
 > 2. **WLED Breakout Board**: Houses the 4x WS2812B-2020 RGB status LEDs and the multi-function tactile user button.
-> Interactive HTML Bill of Materials (iBOM) are provided for both boards in [`pcb/bom/`](pcb/bom/).
+> Interactive HTML Bill of Materials (iBOM) are provided for both boards in [`pcb/bom/`](pcb/bom/), and 3D CAD models in [`pcb/cad/`](pcb/cad/).
 
 ---
 
@@ -138,36 +137,6 @@ The project features auto-programming EEPROM configuration, 10-step throttle map
                       +-------------------------------------+
 ```
 
----
-
-## Pinout & Terminal Descriptions
-
-### 1. Mainboard Headers & Terminals
-
-![M2 Plus Mainboard Headers & Terminals Reference](pcb/images/top_assembled.jpg)
-
-| Terminal / Pad | Type | Description |
-|:---|:---:|:---|
-| **USB1** | Input | USB Type-C 6-pin charging receptacle (5V input). Compatible with C-to-C and A-to-C cables. |
-| **CN2 (B+ / B-)** | Power | 2-pin JST / solder pad connector for 1S Lithium-ion cell (3.0V – 4.2V). |
-| **CN1 (U, V, W)** | Output | 3-phase BLDC motor phase outputs driven by the AO3400 MOSFET bridge. |
-| **X1 (Header)** | Debug / Prog | 5-pin 1.27mm programming header (`3V3/5V`, `SWIO/PD1`, `GND`, `NRST`, `PD6/ADC`). |
-| **WLED Pads** | Interface | 4-conductor breakout to daughterboard (`5V`, `GND`, `PD2/LED_DAT`, `PD5/BTN_IN`). |
-
-### 2. MCU Pin Mapping (CH32V003F4U6)
-
-| Pin | MCU Function | Peripheral / Connection | Hardware & Electrical Notes |
-|:---:|:---|:---|:---|
-| **`PD5`** | GPIO Input | Tactile Push Button | Hardware 10kΩ pull-up to 5V; active LOW. |
-| **`PD2`** | GPIO Output | WS2812B LED Data | GPIO timer 1 channel 1 (T1CH1). |
-| **`PD6`** | ADC6 | 1S Battery Sense | Direct 1:1 voltage sense (0–5V ADC); filtered via EMA with +25 mV/step load sag compensation. |
-| **`PA1`** | ADC1  | IP2312 D1 (Charge Detect) | Direct trace; MCU internal pull-down (~40kΩ); IP2312 drives ~5V when charging. |
-| **`PA2`** | ADC0  | IP2312 D2 (Full Charge) | Direct trace; MCU internal pull-down (~40kΩ); IP2312 drives ~5V when full. |
-| **`PC1`** | I2C1 SDA | AMT49406 Serial Data | 2.2kΩ hardware pull-up to 5V (400 kHz Fast-Mode I2C). |
-| **`PC2`** | I2C1 SCL | AMT49406 Serial Clock | 2.2kΩ hardware pull-up to 5V (400 kHz Fast-Mode I2C). |
-| **`PC3`** | GPIO Output | AMT49406 DIR | Motor direction control pin (Default: Clockwise). |
-| **`PC5`** | GPIO Output | AMT49406 BRAKE | Active HIGH dynamic braking control (200ms pulse on shutdown). |
-| **`PD1`** | SWIO | WCH-Link Single-Wire Debug | Flashing and debugging interface. |
 
 ---
 
@@ -205,7 +174,17 @@ Ready-to-order Gerber packages (2-layer FR4, 1.6mm thickness) for PCB prototypin
 * **M2 Plus Mainboard Gerbers**: [`pcb/gerber/M2-plus-v1_2026-09-29.zip`](pcb/gerber/M2-plus-v1_2026-09-29.zip)
 * **WLED Breakout Board Gerbers**: [`pcb/gerber/WLED-breakout_2026-09-29.zip`](pcb/gerber/WLED-breakout_2026-09-29.zip)
 
-### 3. Summary Component Table
+### 3. PCB 3D STEP Models
+Complete 3D ECAD models for mechanical integration and CAD modeling:
+
+* **M2 Plus Mainboard 3D STEP**: [`pcb/cad/3D_m2plus_2026-09-29.step`](pcb/cad/3D_m2plus_2026-09-29.step)
+* **WLED Breakout Board 3D STEP**: [`pcb/cad/3D_breakout_2026-09-29.step`](pcb/cad/3D_breakout_2026-09-29.step)
+
+### 4. Summary Component Table
+
+> [!NOTE]
+> **Notice on 1.27mm Headers**:
+> Standard 1.27mm pitch male pin headers (for mainboard programming port `X1`) and mating 1.27mm female headers / ribbon connectors are **not explicitly mentioned inside the generated BOM files** (`.html`). Please ensure you source 1.27mm male pin headers and 1.27mm 4-pin female receptacles to connect to the auxillary board.
 
 #### M2 Plus Mainboard (PCB1)
 
@@ -225,7 +204,8 @@ Ready-to-order Gerber packages (2-layer FR4, 1.6mm thickness) for PCB prototypin
 | **USB1** | TYPE-C 6P | SMD Type-C 6P | USB Type-C Receptacle with CC resistors |
 | **CN1** | MX1.25-3PWT | SMD 3-Pin MX1.25 | BLDC Motor Phase Connector (`C52037387`) |
 | **CN2** | SH-PH2.0-2PLT | SMD 2-Pin PH2.0 | 1S Battery Connector (`C53477406`) |
-| **X1** | 1.27_5x1 | 5-Pin 1.27mm Header | Single-Wire Programming & Debug Interface |
+| **X1** | 1.27mm 1x5P Male Header | 1.27mm Pitch (5x1) | Single-Wire Programming & Debug Interface *(Not explicitly in BOM)* |
+| **-** | 1.27mm 1x5P Female Header | 1.27mm Pitch (5x1) | Mating connector for WCH-Link SWD cable *(Not explicitly in BOM)* |
 | **C9 – C11, C13, C14, C20, C21, C23** | 22µF | 0805 | High-Capacitance Filter Capacitors (`C602037`) |
 | **C22** | 10µF | 0805 | Bypass Capacitor |
 | **C1, C12, C15, C17** | 1µF / 2.2µF | 0603 | Decoupling Capacitors |
@@ -246,6 +226,37 @@ Ready-to-order Gerber packages (2-layer FR4, 1.6mm thickness) for PCB prototypin
 | **C1 – C4** | 100nF | 0402 | Local RGB LED Decoupling Capacitors (`C1525`) |
 | **R1** | 10kΩ ±1% | 0402 | Button Hardware Pull-Up Resistor |
 | **SW1 / SW2** | TS-1088 or SKRPACE010 | SMD 2-Pin / 4-Pin Tactile Switch | Multi-function User Control Button (`C720477` / `C139797`) |
+
+---
+
+## 3D CAD & Enclosure Mechanical Files
+
+All 3D CAD models, PCB STEP files, and 3D-printable enclosure models are located in [`pcb/cad/`](pcb/cad/):
+
+### 1. PCB 3D CAD Models (ECAD / MCAD)
+
+| File | Format | Size | Description |
+|:---|:---:|:---:|:---|
+| **[`3D_m2plus_2026-09-29.step`](pcb/cad/3D_m2plus_2026-09-29.step)** | STEP | ~26 MB | 3D ECAD model of the M2 Plus Mainboard PCB with all mounted components |
+| **[`3D_breakout_2026-09-29.step`](pcb/cad/3D_breakout_2026-09-29.step)** | STEP | ~4.6 MB | 3D ECAD model of the WLED Breakout Board PCB with all mounted components |
+
+### 2. Enclosure Shells & Master Assembly
+
+| File | Format | Description |
+|:---|:---:|:---|
+| **[`full_assembly.step`](pcb/cad/full_assembly.step)** | STEP | Master 3D CAD assembly (PCBs, enclosure shells, button, fasteners) |
+| **[`bottom_shell.stl`](pcb/cad/bottom_shell.stl)** | STL | Bottom enclosure body housing the M2 Plus Mainboard, battery bay, and USB-C port |
+| **[`upper_shell.stl`](pcb/cad/upper_shell.stl)** | STL | Upper enclosure body housing the WLED breakout board and motor airflow channel |
+| **[`button.stl`](pcb/cad/button.stl)** | STL | 3D-printable multi-function tactile button actuator |
+
+### Required Fasteners
+* **Enclosure Screws**: **M1.4 × 6 mm SHCS** (Socket Head Cap Screws)
+
+---
+
+## Installation & Assembly Instructions
+
+*Coming soon.*
 
 ---
 
